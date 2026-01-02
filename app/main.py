@@ -5,6 +5,7 @@ from rich.console import Console
 
 from app.config import load_config
 from app.storage.local import LocalStorage
+from app.storage.s3 import S3Storage
 from app.strategies.mysql import MySQLStrategy
 
 app = typer.Typer(help="Db Backup Utility CLI")
@@ -45,10 +46,26 @@ def backup(db_name: str = typer.Option(..., help="Database name is in yaml.")):
         console.print("[bold red]Fail in backup. Aborting upload...[/bold red]")
         raise typer.Exit(code=1)
 
-    storage_path = config["general"]["backup_dir"]
-    storage = LocalStorage(backup_dir=storage_path)
+    storage_type = config["general"].get("storage_type", "local")
+    storage = None
 
     filename = os.path.basename(backup_file_path)
+
+    if storage_type == "local":
+        backup_dir = config["general"]["backup_dir"]
+        storage = LocalStorage(backup_dir)
+
+    elif storage_type == "s3":
+        aws_conf = config.get("aws", {})
+        storage = S3Storage(
+            bucket_name=aws_conf.get("bucket_name"),
+            region=aws_conf.get("region"),
+            access_key=aws_conf.get("access_key"),
+            secret_key=aws_conf.get("secret_key"),
+        )
+    else:
+        console.print(f"[red]Storage type '{storage_type}' not supported.[/red]")
+        return
 
     storage.save(backup_file_path, filename)
 
