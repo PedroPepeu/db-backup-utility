@@ -10,7 +10,7 @@ class DatabaseStrategy(ABC):
         self.config = config
 
     @abstractmethod
-    def backup(self):
+    def backup(self) -> str | None:
         """
         Must be implemented by all subclasses.
 

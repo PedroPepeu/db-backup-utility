@@ -1,7 +1,10 @@
+import os
+
 import typer
 from rich.console import Console
 
 from app.config import load_config
+from app.storage.local import LocalStorage
 from app.strategies.mysql import MySQLStrategy
 
 app = typer.Typer(help="Db Backup Utility CLI")
@@ -36,7 +39,18 @@ def backup(db_name: str = typer.Option(..., help="Database name is in yaml.")):
         console.print(f"[red]DB type '{db_type}' not yet supported.[/red]")
         return
 
-    strategy.backup()
+    backup_file_path = strategy.backup()
+
+    if not backup_file_path:
+        console.print("[bold red]Fail in backup. Aborting upload...[/bold red]")
+        raise typer.Exit(code=1)
+
+    storage_path = config["general"]["backup_dir"]
+    storage = LocalStorage(backup_dir=storage_path)
+
+    filename = os.path.basename(backup_file_path)
+
+    storage.save(backup_file_path, filename)
 
 
 @app.command()
